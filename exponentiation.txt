@@ -1,0 +1,122 @@
+-----------------------------------------------------------------------------------------------
+LIBRARY ieee;
+USE ieee.std_logic_1164.all;
+USE ieee.math_real.all;
+USE ieee.fixed_pkg.all; --- Biblioteca para utilização do ponto-fixo
+-----------------------------------------------------------------------------------------------
+PACKAGE exponentiation_pkg IS
+
+	FUNCTION square (SIGNAL base_square: INTEGER) RETURN INTEGER;
+	FUNCTION square_fixed (SIGNAL base_square: SFIXED) RETURN SFIXED;
+	FUNCTION power_integer (SIGNAL base_exp, exponent: INTEGER) RETURN INTEGER;
+	FUNCTION power_fixed (SIGNAL base_exp, exponent: SFIXED) RETURN SFIXED;
+
+END exponentiation_pkg;
+-----------------------------------------------------------------------------------------------
+PACKAGE BODY exponentiation_pkg IS
+
+	-------------------------------------------------------------------------------------------
+	FUNCTION square (SIGNAL base_square: INTEGER) RETURN INTEGER IS
+	-- Eleva um inteiro ao quadrado
+	BEGIN
+		RETURN base_square * base_square;
+	END square;
+	-------------------------------------------------------------------------------------------
+	FUNCTION square_fixed (SIGNAL base_square: SFIXED) RETURN SFIXED IS
+	-- Eleva um ponto-fixo ao quadrado
+	BEGIN
+		RETURN resize (base_square * base_square, base_square'HIGH, base_square'LOW);
+	END square_fixed;
+	-------------------------------------------------------------------------------------------
+	FUNCTION power_integer (SIGNAL base_exp, exponent: INTEGER) RETURN INTEGER IS
+	-- Eleva um inteiro a uma potência qualquer
+		VARIABLE product: INTEGER;
+		VARIABLE i: INTEGER := 1;
+	BEGIN
+		
+		product := base_exp;
+		
+		WHILE i < exponent LOOP
+			product := product * base_exp;
+			i := i + 1;
+		END LOOP;
+			
+		RETURN product;
+	
+	END power_integer;
+	-------------------------------------------------------------------------------------------
+	FUNCTION power_fixed (SIGNAL base_exp, exponent: SFIXED) RETURN SFIXED IS
+	-- Eleva um ponto-fixo a uma potência qualquer
+		VARIABLE product: SFIXED (base_exp'HIGH DOWNTO base_exp'LOW);
+		VARIABLE i: INTEGER := 1;
+		VARIABLE exponent_i: INTEGER RANGE 0 TO 9000;
+	BEGIN
+		
+		product := base_exp;			
+		exponent_i := to_integer(exponent); -- Para comparar i (do loop) com o valor do expoente
+											-- Não funciona corretamente para expoentes fracionários
+		WHILE i < exponent_i LOOP
+			product := resize (product * base_exp, product'HIGH, product'LOW);
+			i := i + 1;
+		END LOOP;
+			
+		RETURN product;
+		
+	END power_fixed;
+	-------------------------------------------------------------------------------------------	
+	
+END exponentiation_pkg;
+-----------------------------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------------------------
+LIBRARY ieee;
+USE ieee.std_logic_1164.all;
+USE ieee.math_real.all;
+USE ieee.fixed_pkg.all;
+USE work.exponentiation_pkg.all;
+-----------------------------------------------------------------------------------------------
+ENTITY exponentiation IS
+
+    PORT(wut: IN BIT;
+         
+         base_square_integer: BUFFER INTEGER RANGE 0 TO 10000;
+         square_integer: OUT INTEGER RANGE 0 TO 10000;
+         
+         base_square_sfixed: BUFFER SFIXED (4 DOWNTO 0);
+         square_sfixed: OUT SFIXED (base_square_sfixed'HIGH DOWNTO base_square_sfixed'LOW);
+         
+         base_integer, exponent_integer: BUFFER INTEGER RANGE 0 TO 50;
+         product_integer: OUT INTEGER RANGE 0 TO 9000;
+         
+         base_sfixed, exponent_sfixed: BUFFER SFIXED (8 DOWNTO 0); -- Esses ranges influenciam
+         product_sfixed: OUT SFIXED (8 DOWNTO 0));        -- diretamente o tempo que o código
+														  -- leva para compilar
+END ENTITY;
+-----------------------------------------------------------------------------------------------
+ARCHITECTURE exponentiation OF exponentiation IS
+
+BEGIN
+
+    PROCESS(wut)
+    
+    BEGIN
+
+		base_square_integer <= 30;
+		square_integer <= square(base_square_integer);
+		-------------------------------------------------------------------------------------------
+		base_square_sfixed <= to_sfixed(2, base_square_sfixed'HIGH, base_square_sfixed'LOW);
+		square_sfixed <= square_fixed(base_square_sfixed);
+		-------------------------------------------------------------------------------------------
+		base_integer <= 2;
+		exponent_integer <= 8;
+		product_integer <= power_integer(base_integer, exponent_integer);
+		-------------------------------------------------------------------------------------------
+		base_sfixed <= to_sfixed(2, base_sfixed'HIGH, base_sfixed'LOW);
+		exponent_sfixed <= to_sfixed(5, base_sfixed'HIGH, base_sfixed'LOW);
+		product_sfixed <= power_fixed(base_sfixed, exponent_sfixed);
+		-------------------------------------------------------------------------------------------
+		
+    END PROCESS;
+
+END ARCHITECTURE;
+-----------------------------------------------------------------------------------------------
